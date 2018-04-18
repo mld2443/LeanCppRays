@@ -7,17 +7,17 @@
 #include <list>
 #include <random>
 
-#include <png.h>
+#include "png.h"
 
-#define DTOR(x) x * 3.14159265f/180.0f
+#define DTOR(x) x * 3.14159265f/180.f
 
 //////////////////////
 // Global Variables //
 //////////////////////
 std::random_device rd;
 std::mt19937 gen(rd());
-std::normal_distribution<float> nDist(0.0f, 1.0f);
-std::uniform_real_distribution<float> uDist(0.0f, 1.0f);
+std::normal_distribution<float> nDist(0.f, 1.f);
+std::uniform_real_distribution<float> uDist(0.f, 1.f);
 
 //////////////////////////
 // Forward Declarations //
@@ -34,15 +34,15 @@ class Sphere;
 class Scene;
 class Camera;
 
-///////////////////////////
-// MARK: Data Structures //
-///////////////////////////
+///////////////////
+// MARK: Structs //
+///////////////////
 struct Float3 {
     float x, y, z;
     
     float length() const;
     Float3 normalize() const;
-    bool isZero() const { return x == 0.0f && y == 0.0f && z == 0.0f; }
+    bool isZero() const { return x == 0.f && y == 0.f && z == 0.f; }
 };
 
 Float3 randomVector() { return Float3{nDist(gen), nDist(gen), nDist(gen)}; }
@@ -58,19 +58,20 @@ std::ostream& operator<<(std::ostream& str, const Float3& v) { str << "<" << v.x
 Float3 operator*(const Float3& lhs, const Float3& rhs) { return Float3{lhs.x * rhs.x, lhs.y * rhs.y, lhs.z * rhs.z}; }
 float dot(const Float3& lhs, const Float3& rhs) { return lhs.x * rhs.x + lhs.y * rhs.y + lhs.z * rhs.z; }
 Float3 cross(const Float3& lhs, const Float3& rhs) { return Float3{lhs.y * rhs.z - lhs.z * rhs.y, lhs.z * rhs.x - lhs.x * rhs.z, lhs.x * rhs.y - lhs.y * rhs.x}; }
-Float3 reflect(const Float3& incoming, const Float3& normal) { return incoming - (normal * (2.0f * dot(incoming, normal))); }
+Float3 reflect(const Float3& incoming, const Float3& normal) { return incoming - (normal * (2.f * dot(incoming, normal))); }
 Float3 refract(const Float3& incoming, const Float3& normal, const float eta) {
-    const float cosI = -dot(incoming, normal), sinT2 = eta * eta * (1.0f - cosI * cosI);
+    const float cosI = -dot(incoming, normal), sinT2 = eta * eta * (1.f - cosI * cosI);
     
-    if (sinT2 > 1.0f)
+    if (sinT2 > 1.f)
         return Float3{};
     
-    const float cosT = sqrtf(1.0f - sinT2);
+    const float cosT = sqrtf(1.f - sinT2);
     return (incoming * eta) + (normal * (eta * cosI - cosT));
 }
 
 float Float3::length() const { return sqrtf(dot(*this, *this)); }
-Float3 Float3::normalize() const { return *this * (1.0f/length()); }
+Float3 Float3::normalize() const { return *this * (1.f/length()); }
+
 
 struct Ray {
     Float3 origin, direction;
@@ -84,12 +85,12 @@ struct Ray {
 struct Color {
     float r, g, b;
     
-    Color(const float r = 0.0f, const float g = 0.0f, const float b = 0.0f): r(r), g(g), b(b) {}
+    Color(const float r = 0.f, const float g = 0.f, const float b = 0.f): r(r), g(g), b(b) {}
     
     Color(const char* desc) {
         unsigned int rr = 0, gg = 0, bb = 0;
         sscanf(desc, "#%2x%2x%2x", &rr, &gg, &bb);
-        r = ((float)rr) / 255.0f, g = ((float)gg) / 255.0f, b = ((float)bb) / 255.0f;
+        r = ((float)rr) / 255.f, g = ((float)gg) / 255.f, b = ((float)bb) / 255.f;
     }
     
     Color transform(const std::function<float(float)>& t) const { return Color{t(r), t(g), t(b)}; }
@@ -102,6 +103,7 @@ Color operator/(const Color& lhs, const float rhs) { return Color{lhs.r / rhs, l
 Color operator*(const Color& lhs, const float rhs) { return Color{lhs.r * rhs, lhs.g * rhs, lhs.b * rhs}; }
 Color operator*(const float lhs, const Color& rhs) { return Color{lhs * rhs.r, lhs * rhs.g, lhs * rhs.b}; }
 
+
 png_byte channelToByte(const float f) { return (png_byte) std::min(std::max((int) (f * 255.0f), 0), 255); }
 
 struct Pixel {
@@ -111,6 +113,7 @@ struct Pixel {
     Pixel(const Color& c): r(channelToByte(c.r)), g(channelToByte(c.g)), b(channelToByte(c.b)) {}
 };
 
+
 struct Intersection {
     float distance;
     Float3 point;
@@ -118,12 +121,14 @@ struct Intersection {
     Material *material;
 };
 
+
 template <typename T>
 struct Range {
     T lower, upper;
     
     bool contains(const T& value) const { return lower <= value && value < upper; }
 };
+
 
 void abort_(const char * s, ...) {
     va_list args;
@@ -139,11 +144,11 @@ void abort_(const char * s, ...) {
 /////////////////////
 class Material {
 public:
-    Material(Color c): color(c) {}
+    Material(Color c): m_color(c) {}
     
     virtual Ray interact(const Ray&, const Float3&, const Float3&, const float) const=0;
     
-    const Color color;
+    const Color m_color;
 };
 
 class Lambertian : public Material {
@@ -151,24 +156,24 @@ public:
     Lambertian(Color c): Material(c) {}
     
     Ray interact(const Ray& incoming, const Float3& collision, const Float3& normal, const float) const {
-        Float3 target = collision + normal + randomUnitVector() * 0.99f;
+        Float3 target = collision + normal + randomUnitVector() * 0.999f;
         return Ray{collision, target - collision};
     }
 };
 
 class Metallic : public Material {
 public:
-    Metallic(const Color c, const float f): Material(c), fuzz(f) {}
+    Metallic(const Color c, const float f): Material(c), m_fuzz(f) {}
     
     Ray interact(const Ray& incoming, const Float3& collision, const Float3& normal, const float) const {
         Float3 reflected = reflect(incoming.direction, normal);
         
-        if (fuzz > 0.0) {
-            Float3 fuzziness = randomUnitVector() * fuzz;
+        if (m_fuzz > 0.f) {
+            Float3 fuzziness = randomUnitVector() * m_fuzz;
             float product = dot(fuzziness, normal);
             
-            if (product < 0)
-                fuzziness = fuzziness - (2 * product * normal);
+            if (product < 0.f)
+                fuzziness = fuzziness - (2.f * product * normal);
             
             reflected = reflected + fuzziness;
         }
@@ -176,24 +181,24 @@ public:
         return Ray{collision, reflected.normalize()};
     }
 private:
-    float fuzz;
+    float m_fuzz;
 };
 
 class Dielectric : public Material {
 public:
-    Dielectric(const Color c, const float i): Material(c.transform([](float x){ return sqrtf(x); })), refractionIndex(i) {}
+    Dielectric(const Color c, const float i): Material(c.transform(sqrtf)), m_refractionIndex(i) {}
     
     Ray interact(const Ray& incoming, const Float3& collision, const Float3& normal, const float sceneIndex) const {
         const float entering = dot(incoming.direction, normal);
         float cosX;
         Float3 refracted;
         
-        if (entering > 0) {
+        if (entering > 0.f) {
             cosX = entering;
-            refracted = refract(incoming.direction, -normal, refractionIndex / sceneIndex);
+            refracted = refract(incoming.direction, -normal, m_refractionIndex / sceneIndex);
         } else {
             cosX = -entering;
-            refracted = refract(incoming.direction, normal, sceneIndex / refractionIndex);
+            refracted = refract(incoming.direction, normal, sceneIndex / m_refractionIndex);
         }
         
         if (refracted.isZero() || uDist(gen) < schlickApproximation(cosX, sceneIndex))
@@ -202,13 +207,13 @@ public:
         return Ray{collision, refracted};
     }
 private:
-    float refractionIndex;
+    float m_refractionIndex;
     
     float schlickApproximation(const float cosX, const float sceneIndex) const {
-        float r0 = (sceneIndex - refractionIndex) / (sceneIndex + refractionIndex);
+        float r0 = (sceneIndex - m_refractionIndex) / (sceneIndex + m_refractionIndex);
         r0 *= r0;
-        const float x = 1.0f - cosX;
-        return r0 + (1.0f - r0) * x * x * x * x * x;
+        const float x = 1.f - cosX;
+        return r0 + (1.f - r0) * x * x * x * x * x;
     }
 };
 
@@ -217,7 +222,7 @@ private:
 //////////////////
 class Shape {
 public:
-    Shape(Material* m, const Float3& p): position(p), material(m) {}
+    Shape(Material* m, const Float3& p): m_position(p), m_material(m) {}
     
     virtual Float3 computeNormalAt(const Float3&) const=0;
     virtual float computeNearestIntersection(const Ray&, const Range<float>&) const=0;
@@ -225,67 +230,67 @@ public:
     Intersection* intersectRay(const Ray& ray, const Range<float>& window) {
         float distance = computeNearestIntersection(ray, window);
         
-        if (distance < 0)
+        if (distance < 0.f)
             return nullptr;
         
         Float3 point = ray.project(distance), normal = computeNormalAt(point);
         
-        if (dot(ray.direction, normal) >= 0.0f)
+        if (dot(ray.direction, normal) >= 0.f)
             return nullptr;
         
-        return new Intersection{distance, point, normal, material};
+        return new Intersection{distance, point, normal, m_material};
     }
     
 protected:
-    const Float3 position;
-    Material *material;
+    const Float3 m_position;
+    Material *m_material;
 };
 
 class Plane : public Shape {
 public:
-    Plane(Material* m, const Float3& p, const Float3& n): Shape(m, p), normal(n.normalize()), normDotPos(dot(normal, p)) {}
+    Plane(Material* m, const Float3& p, const Float3& n): Shape(m, p), m_normal(n.normalize()), m_normDotPos(dot(m_normal, p)) {}
     
     Float3 computeNormalAt(const Float3&) const {
-        return normal;
+        return m_normal;
     }
     
     float computeNearestIntersection(const Ray& ray, const Range<float>& window) const {
-        const float denominator = dot(normal, ray.direction);
+        const float denominator = dot(m_normal, ray.direction);
         
-        if (denominator == 0.0f)
-            return -1.0f;
+        if (denominator == 0.f)
+            return -1.f;
         
-        const float distance = (normDotPos - dot(normal, ray.origin)) / denominator;
+        const float distance = (m_normDotPos - dot(m_normal, ray.origin)) / denominator;
         
         if (window.contains(distance))
             return distance;
         
-        return -1.0f;
+        return -1.f;
     }
     
 private:
-    const Float3 normal;
-    const float normDotPos;
+    const Float3 m_normal;
+    const float m_normDotPos;
 };
 
 class Sphere : public Shape {
 public:
-    Sphere(Material* m, const Float3& p, const float r): Shape(m, p), radius(r * r) {}
+    Sphere(Material* m, const Float3& p, const float r): Shape(m, p), m_radius(r * r) {}
     
     Float3 computeNormalAt(const Float3& point) const {
-        return (point - position).normalize();
+        return (point - m_position).normalize();
     }
     
     float computeNearestIntersection(const Ray& ray, const Range<float>& window) const {
-        const Float3 rCam = ray.origin - position;
+        const Float3 rCam = ray.origin - m_position;
         const Float3 rRay = ray.direction;
         const float A = dot(rRay, rRay);
         const float B = dot(rCam, rRay);
-        const float C = dot(rCam, rCam) - radius;
+        const float C = dot(rCam, rCam) - m_radius;
         const float square = B * B - A * C;
         
-        if (square < 0.0f)
-            return -1.0f;
+        if (square < 0.f)
+            return -1.f;
         
         const float root = sqrt(square);
         const float D1 = (-B - root) / A;
@@ -295,11 +300,11 @@ public:
             return D1;
         if (window.contains(D2))
             return D2;
-        return -1.0f;
+        return -1.f;
     }
     
 private:
-    const float radius;
+    const float m_radius;
 };
 
 /////////////////
@@ -307,9 +312,9 @@ private:
 /////////////////
 class Scene {
 public:
-    Scene(const Color h = {0.3f, 0.5f, 1.0f},
-          const Color s = {1.0f, 1.0f, 1.0f},
-          const float r = 1.0f):
+    Scene(const Color h = {0.3f, 0.5f, 1.f},
+          const Color s = {1.f, 1.f, 1.f},
+          const float r = 1.f):
     horizon(h),
     sky(s),
     refractionIndex(r) {}
@@ -337,7 +342,7 @@ public:
             if (!nearest)
                 break;
             
-            colors.push_back(nearest->material->color);
+            colors.push_back(nearest->material->m_color);
             dir = nearest->material->interact(dir, nearest->point, nearest->normal, refractionIndex);
             window = {window.lower, window.upper - nearest->distance};
             
@@ -380,8 +385,8 @@ private:
     }
     
     Color skyBox(const Float3& direction) const {
-        const float interpolate = (0.5f * (direction.z + 1.0f));
-        return (horizon * (1.0f - interpolate)) + (sky * interpolate);
+        const float interpolate = (0.5f * (direction.z + 1.f));
+        return (horizon * (1.f - interpolate)) + (sky * interpolate);
     }
 };
 
@@ -395,23 +400,23 @@ public:
            const unsigned int sampling, const unsigned int depth,
            const Float3& direction,
            const float FOV,
-           const Float3& up = Float3{0.0f, 0.0f, 1.0f}):
+           const Float3& up = Float3{0.f, 0.f, 1.f}):
     position(position),
     width(width), height(height),
     sampling(sampling), depth(depth),
-    frustum({0.1f, 1000.0f}) {
+    frustum({0.1f, 1000.f}) {
         const Float3 unitDirection = direction.normalize();
-        const float screenWidth = tan(DTOR(FOV / 2.0f));
+        const float screenWidth = tan(DTOR(FOV / 2.f));
         const float screenHeight = (((float) height) / ((float) width)) * screenWidth;
         const Float3 iStar = cross(up, unitDirection).normalize();
         const Float3 jStar = cross(iStar, unitDirection).normalize();
         
-        iHat = iStar * (2 * screenWidth / (float) width);
-        jHat = jStar * (2 * screenHeight / (float) height);
+        iHat = iStar * (2.f * screenWidth / (float) width);
+        jHat = jStar * (2.f * screenHeight / (float) height);
         origin = unitDirection + (iStar * -screenWidth) + (jStar * -screenHeight);
         
         film = new Pixel*[height];
-        for (int y = 0; y < height; ++y)
+        for (unsigned int y = 0; y < height; ++y)
             film[y] = new Pixel[width];
     }
     
@@ -475,7 +480,7 @@ private:
     Pixel getPixel(const Scene& scene, const unsigned int x, const unsigned int y) const {
         Color sample{};
         
-        for (int s = 0; s < sampling; ++s) {
+        for (unsigned int s = 0; s < sampling; ++s) {
             const float xCoord = x + uDist(gen);
             const float yCoord = y + uDist(gen);
             
@@ -488,7 +493,7 @@ private:
         sample = sample / sampling;
         
         // Post-processing, makes the result brighter
-        //sample = sample.transform([](float x){ return sqrtf(x); });
+        //sample = sample.transform(sqrtf);
         
         return Pixel(sample);
     }
@@ -505,20 +510,21 @@ int main(int argc, const char * argv[]) {
     Material* white = new Lambertian(Color{"#FFFFFF"});
     Material* glass = new Dielectric(Color{"#F0FFF0"}, 1.37f);
     Material* matteCyan = new Lambertian(Color{"#00FFFF"});
-    Material* shinyYellow = new Metallic(Color{"#FFFF00"}, 0.0f);
+    Material* shinyYellow = new Metallic(Color{"#FFFF00"}, 0.f);
     Material* gunmetal = new Metallic(Color{"#808080"}, 0.1f);
     Material* matteMagenta = new Lambertian(Color{"#FF00FF"});
     
-    s.addShape(new Plane(white, Float3{0,0,0}, Float3{0,0,1}));
-    s.addShape(new Sphere(glass, Float3{9,0,6}, 6));
-    s.addShape(new Sphere(matteCyan, Float3{19,-5,3}, 3));
-    s.addShape(new Sphere(shinyYellow, Float3{20,5,4}, 4));
-    s.addShape(new Sphere(gunmetal, Float3{30,-16,16}, 16));
-    s.addShape(new Sphere(matteMagenta, Float3{100,170,30}, 30));
+    s.addShape(new Plane(white, Float3{0.f,0.f,0.f}, Float3{0.f,0.f,1.f}));
+    s.addShape(new Sphere(glass, Float3{9.f,0.f,6.f}, 6.f));
+    s.addShape(new Sphere(matteCyan, Float3{19.f,-5.f,3}, 3.f));
+    s.addShape(new Sphere(shinyYellow, Float3{20.f,5.f,4.f}, 4.f));
+    s.addShape(new Sphere(gunmetal, Float3{30.f,-16.f,16.f}, 16.f));
+    s.addShape(new Sphere(matteMagenta, Float3{100.f,170.f,30.f}, 30.f));
     
     // Camera
-    const unsigned int width = 1280, height = 720, sampling = 1000, depth = 10;
-    Camera c = Camera(Float3{0,0,7}, width, height, sampling, depth, Float3{18,0,-1}, 100);
+    const unsigned int width = 640, height = 360, sampling = 100, depth = 10;
+    //const unsigned int width = 1280, height = 720, sampling = 1000, depth = 10;
+    Camera c = Camera(Float3{0.f,0.f,7.f}, width, height, sampling, depth, Float3{18.f,0.f,-1.f}, 100.f);
     
     // Action
     clock_t cycles = clock(); {
